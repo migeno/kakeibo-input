@@ -124,6 +124,25 @@
   }
   .list-title span:first-child { font-size: 14px; font-weight: 600; }
   .list-title span:last-child { font-size: 13px; color: var(--text-muted); }
+  .sort-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .sort-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: #fafafa;
+    color: var(--text-muted);
+  }
+  .sort-btn.selected {
+    background: var(--blue-light);
+    border-color: var(--blue);
+    color: var(--blue);
+    font-weight: 600;
+  }
   .entry {
     display: flex;
     align-items: center;
@@ -224,6 +243,10 @@
       <span>まだ送っていない記録</span>
       <span id="pending-total"></span>
     </div>
+    <div class="sort-toggle" id="sort-toggle">
+      <button type="button" class="sort-btn selected" data-mode="recorded">記録順</button>
+      <button type="button" class="sort-btn" data-mode="date">日付順</button>
+    </div>
     <div id="entry-list"></div>
     <button class="export-btn" id="export-btn" disabled>この内容を書き出す</button>
   </div>
@@ -239,6 +262,7 @@ const CATEGORIES = [
 
 const STORAGE_KEY = "kakeibo_entries_v1";
 let selectedCategory = null;
+let sortMode = "recorded";
 
 function todayStr() {
   const d = new Date();
@@ -297,7 +321,13 @@ function renderEntries() {
   const pendingTotal = pending.reduce((s, e) => s + e.price, 0);
   pendingTotalEl.textContent = pending.length ? fmtYen(pendingTotal) : "";
 
-  const recent = [...entries].sort((a, b) => b.id - a.id).slice(0, 20);
+  const recent = [...entries].sort((a, b) => {
+    if (sortMode === "date") {
+      const dateDiff = b.date.localeCompare(a.date);
+      if (dateDiff !== 0) return dateDiff;
+    }
+    return b.id - a.id;
+  }).slice(0, 20);
 
   if (recent.length === 0) {
     list.innerHTML = '<div class="empty-hint">まだ記録がありません</div>';
@@ -317,6 +347,10 @@ function renderEntries() {
     list.querySelectorAll(".del").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = Number(btn.dataset.id);
+        const target = loadEntries().find(e => e.id === id);
+        if (!target) return;
+        const label = `${target.date} ${target.category} ${target.item || ""} ${fmtYen(target.price)}`.trim();
+        if (!confirm(`この記録を削除しますか？\n${label}`)) return;
         const next = loadEntries().filter(e => e.id !== id);
         saveEntries(next);
         renderEntries();
@@ -423,6 +457,14 @@ renderCategories();
 renderEntries();
 document.getElementById("submit-btn").addEventListener("click", handleSubmit);
 document.getElementById("export-btn").addEventListener("click", handleExport);
+document.querySelectorAll(".sort-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    sortMode = btn.dataset.mode;
+    document.querySelectorAll(".sort-btn").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    renderEntries();
+  });
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

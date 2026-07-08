@@ -1,4 +1,4 @@
-const CACHE_NAME = "kakeibo-v1";
+const CACHE_NAME = "kakeibo-v2";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", event => {
@@ -17,8 +17,16 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
+// Network-first: always fetch the latest version when online, only
+// falling back to the cached copy if the network request fails.
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    fetch(event.request)
+      .then(res => {
+        const resClone = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
