@@ -374,10 +374,11 @@ function isRecordedToday(entry) {
   return dateStrFromTs(entry.id) === todayStr();
 }
 
-function fmtDateLabel(dateStr) {
+function fmtDateLabel(dateStr, markToday) {
   const [y, m, d] = dateStr.split("-").map(Number);
   const wd = WEEKDAYS[new Date(y, m - 1, d).getDay()];
-  return `${m}月${d}日(${wd})`;
+  const suffix = markToday && dateStr === todayStr() ? "・今日" : "";
+  return `${m}月${d}日(${wd})${suffix}`;
 }
 
 function loadEntries() {
@@ -479,7 +480,7 @@ function archiveEntries() {
   if (archiveFilter === "sent") {
     return entries.filter(e => e.exported);
   }
-  return entries.filter(e => !e.exported && !isRecordedToday(e));
+  return entries.filter(e => !e.exported);
 }
 
 function renderArchive() {
@@ -490,7 +491,7 @@ function renderArchive() {
   const clearBtn = document.getElementById("clear-sent-btn");
 
   const rows = archiveEntries();
-  subtitleEl.textContent = archiveFilter === "sent" ? "送信済みの記録" : "未送信の記録（過去分）";
+  subtitleEl.textContent = archiveFilter === "sent" ? "送信済みの記録" : "未送信の記録";
   totalEl.textContent = rows.length ? `${rows.length}件・${fmtYen(sumOf(rows))}` : "";
   clearBtn.hidden = !(archiveFilter === "sent" && rows.length > 0);
 
@@ -498,7 +499,7 @@ function renderArchive() {
     rangeEl.textContent = "";
     list.innerHTML = archiveFilter === "sent"
       ? '<div class="empty-hint">送信済みの記録はありません</div>'
-      : '<div class="empty-hint">過去分の未送信記録はありません</div>';
+      : '<div class="empty-hint">未送信の記録はありません</div>';
     return;
   }
 
@@ -522,7 +523,7 @@ function renderArchive() {
       group.className = "date-group";
       const head = document.createElement("div");
       head.className = "date-head";
-      head.innerHTML = `<span>${fmtDateLabel(date)}</span><span>${fmtYen(sumOf(groups[date]))}</span>`;
+      head.innerHTML = `<span>${fmtDateLabel(date, true)}</span><span>${fmtYen(sumOf(groups[date]))}</span>`;
       group.appendChild(head);
       groups[date].sort((a, b) => a.id - b.id).forEach(e => group.appendChild(makeEntryEl(e)));
       list.appendChild(group);
@@ -537,30 +538,22 @@ function renderExportSection() {
   const btn = document.getElementById("export-btn");
 
   const pending = loadEntries().filter(e => !e.exported);
-  const todayPending = pending.filter(isRecordedToday);
-  const pastPending = pending.length - todayPending.length;
 
   btn.disabled = pending.length === 0;
   btn.textContent = pending.length
     ? `まとめて書き出す（${pending.length}件）`
     : "まとめて書き出す";
 
-  if (pending.length === 0) {
-    noteEl.textContent = "書き出していない記録はありません。";
-  } else if (todayPending.length > 0 && pastPending > 0) {
-    noteEl.textContent = `過去分${pastPending}件と、今日入力した${todayPending.length}件をまとめて書き出します（合計${fmtYen(sumOf(pending))}）。`;
-  } else if (todayPending.length > 0) {
-    noteEl.textContent = `今日入力した${todayPending.length}件を書き出します（${fmtYen(sumOf(pending))}）。`;
-  } else {
-    noteEl.textContent = `過去分${pastPending}件を書き出します（${fmtYen(sumOf(pending))}）。`;
-  }
+  noteEl.textContent = pending.length === 0
+    ? "書き出していない記録はありません。"
+    : `上の未送信${pending.length}件（合計${fmtYen(sumOf(pending))}）をまとめて書き出します。`;
 }
 
 function renderArchiveButton() {
   const btn = document.getElementById("open-archive-btn");
-  const pastPending = loadEntries().filter(e => !e.exported && !isRecordedToday(e)).length;
-  btn.textContent = pastPending
-    ? `ためた記録を見る・PCに送る（${pastPending}件）`
+  const pending = loadEntries().filter(e => !e.exported).length;
+  btn.textContent = pending
+    ? `ためた記録を見る・PCに送る（${pending}件）`
     : "ためた記録を見る・PCに送る";
 }
 
