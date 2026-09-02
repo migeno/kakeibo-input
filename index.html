@@ -21,6 +21,7 @@
     --danger: #c0392b;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
@@ -124,20 +125,25 @@
   }
   .list-title span:first-child { font-size: 14px; font-weight: 600; }
   .list-title span:last-child { font-size: 13px; color: var(--text-muted); }
-  .sort-toggle {
+  .range-line {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: -4px 0 10px;
+  }
+  .pill-row {
     display: flex;
     gap: 6px;
     margin-bottom: 10px;
   }
-  .sort-btn {
+  .pill {
     font-size: 12px;
-    padding: 4px 10px;
+    padding: 4px 12px;
     border-radius: 20px;
     border: 1px solid var(--border);
     background: #fafafa;
     color: var(--text-muted);
   }
-  .sort-btn.selected {
+  .pill.selected {
     background: var(--blue-light);
     border-color: var(--blue);
     color: var(--blue);
@@ -171,26 +177,80 @@
     line-height: 1;
   }
   .entry.exported { opacity: 0.45; }
+  .date-group { margin-bottom: 14px; }
+  .date-group:last-child { margin-bottom: 0; }
+  .date-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    background: #f0f4f8;
+    border-radius: 6px;
+    padding: 5px 8px;
+    margin-bottom: 2px;
+  }
+  .date-head span:first-child { font-size: 13px; font-weight: 600; }
+  .date-head span:last-child { font-size: 12px; color: var(--text-muted); }
   .empty-hint {
     color: var(--text-muted);
     font-size: 13px;
     text-align: center;
     padding: 1rem 0;
   }
-  .export-btn {
+  .archive-btn {
     width: 100%;
-    height: 46px;
-    border: none;
+    height: 48px;
     border-radius: 10px;
     background: #fff;
     border: 1px solid var(--blue);
     color: var(--blue);
     font-size: 15px;
     font-weight: 600;
-    margin-top: 0.5rem;
+  }
+  .export-btn {
+    width: 100%;
+    height: 48px;
+    border-radius: 10px;
+    background: var(--blue);
+    border: 1px solid var(--blue);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
   }
   .export-btn:disabled {
     opacity: 0.4;
+  }
+  .export-note {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+    line-height: 1.5;
+  }
+  .danger-btn {
+    width: 100%;
+    height: 40px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .view-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.75rem;
+  }
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--blue);
+    font-size: 15px;
+    padding: 4px 2px;
+  }
+  .view-head .view-title {
+    font-size: 15px;
+    font-weight: 600;
   }
   .toast {
     position: fixed;
@@ -212,43 +272,75 @@
 <body>
 
 <header>
-  <h1>家計簿を記録</h1>
+  <h1 id="page-title">家計簿を記録</h1>
 </header>
 
 <main>
-  <div class="card">
-    <div class="row">
-      <span class="field-label" style="margin:0;">日付</span>
-      <input type="date" id="date-input" style="width:auto;">
+  <div id="main-view">
+    <div class="card">
+      <div class="row">
+        <span class="field-label" style="margin:0;">日付</span>
+        <input type="date" id="date-input" style="width:auto;">
+      </div>
+
+      <div class="amount-wrap">
+        <span class="field-label">金額</span>
+        <input type="number" id="amount-input" inputmode="numeric" placeholder="0" min="0">
+      </div>
+
+      <span class="field-label">区分</span>
+      <div class="cat-grid" id="cat-grid"></div>
+
+      <div class="item-wrap">
+        <span class="field-label">品名</span>
+        <input type="text" id="item-input" placeholder="スーパーで買い物">
+      </div>
+
+      <button class="submit-btn" id="submit-btn">記録する</button>
     </div>
 
-    <div class="amount-wrap">
-      <span class="field-label">金額</span>
-      <input type="number" id="amount-input" inputmode="numeric" placeholder="0" min="0">
+    <div class="card">
+      <div class="list-title">
+        <span>今日入力した記録</span>
+        <span id="today-total"></span>
+      </div>
+      <div id="today-list"></div>
     </div>
 
-    <span class="field-label">区分</span>
-    <div class="cat-grid" id="cat-grid"></div>
-
-    <div class="item-wrap">
-      <span class="field-label">品名</span>
-      <input type="text" id="item-input" placeholder="スーパーで買い物">
-    </div>
-
-    <button class="submit-btn" id="submit-btn">記録する</button>
+    <button class="archive-btn" id="open-archive-btn">ためた記録を見る・PCに送る</button>
   </div>
 
-  <div class="card">
-    <div class="list-title">
-      <span>まだ送っていない記録</span>
-      <span id="pending-total"></span>
+  <div id="archive-view" hidden>
+    <div class="view-head">
+      <button class="back-btn" id="back-btn">&lsaquo; 記録にもどる</button>
     </div>
-    <div class="sort-toggle" id="sort-toggle">
-      <button type="button" class="sort-btn selected" data-mode="recorded">記録順</button>
-      <button type="button" class="sort-btn" data-mode="date">日付順</button>
+
+    <div class="card">
+      <div class="pill-row" id="filter-row">
+        <button type="button" class="pill selected" data-filter="pending">未送信</button>
+        <button type="button" class="pill" data-filter="sent">送信済み</button>
+      </div>
+
+      <div class="list-title">
+        <span id="archive-subtitle">未送信の記録</span>
+        <span id="archive-total"></span>
+      </div>
+      <div class="range-line" id="archive-range"></div>
+
+      <div class="pill-row" id="sort-row">
+        <button type="button" class="pill selected" data-mode="date">日付順</button>
+        <button type="button" class="pill" data-mode="recorded">記録順</button>
+      </div>
+
+      <div id="archive-list"></div>
+
+      <button class="danger-btn" id="clear-sent-btn" hidden>送信済みをすべて削除</button>
     </div>
-    <div id="entry-list"></div>
-    <button class="export-btn" id="export-btn" disabled>この内容を書き出す</button>
+
+    <div class="card">
+      <p class="export-note" id="export-note"></p>
+      <button class="export-btn" id="export-btn" disabled>まとめて書き出す</button>
+    </div>
   </div>
 </main>
 
@@ -259,15 +351,33 @@ const CATEGORIES = [
   "食費", "住居・備品", "水道・光熱", "衣料", "交際費",
   "レジャー", "教育", "医療・衛生", "その他1", "その他2"
 ];
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const STORAGE_KEY = "kakeibo_entries_v1";
 let selectedCategory = null;
-let sortMode = "recorded";
+let sortMode = "date";
+let archiveFilter = "pending";
 
 function todayStr() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
   return new Date(d - tz).toISOString().slice(0, 10);
+}
+
+function dateStrFromTs(ts) {
+  const d = new Date(ts);
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d - tz).toISOString().slice(0, 10);
+}
+
+function isRecordedToday(entry) {
+  return dateStrFromTs(entry.id) === todayStr();
+}
+
+function fmtDateLabel(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const wd = WEEKDAYS[new Date(y, m - 1, d).getDay()];
+  return `${m}月${d}日(${wd})`;
 }
 
 function loadEntries() {
@@ -289,6 +399,14 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove("show"), 1800);
 }
 
+function fmtYen(n) {
+  return "¥" + Math.round(n).toLocaleString("ja-JP");
+}
+
+function sumOf(entries) {
+  return entries.reduce((s, e) => s + e.price, 0);
+}
+
 function renderCategories() {
   const grid = document.getElementById("cat-grid");
   grid.innerHTML = "";
@@ -307,58 +425,158 @@ function renderCategories() {
   });
 }
 
-function fmtYen(n) {
-  return "¥" + Math.round(n).toLocaleString("ja-JP");
+function entryRowHtml(e) {
+  return `
+    <span class="cat">${e.category}</span>
+    <span class="item">${e.item || ""} <span style="color:var(--text-muted)">${e.date.slice(5)}</span></span>
+    <span class="price">${fmtYen(e.price)}</span>
+    <button class="del" data-id="${e.id}" aria-label="削除">&times;</button>
+  `;
 }
 
-function renderEntries() {
-  const entries = loadEntries();
-  const list = document.getElementById("entry-list");
-  const exportBtn = document.getElementById("export-btn");
-  const pendingTotalEl = document.getElementById("pending-total");
+function makeEntryEl(e) {
+  const row = document.createElement("div");
+  row.className = "entry" + (e.exported ? " exported" : "");
+  row.innerHTML = entryRowHtml(e);
+  return row;
+}
 
-  const pending = entries.filter(e => !e.exported);
-  const pendingTotal = pending.reduce((s, e) => s + e.price, 0);
-  pendingTotalEl.textContent = pending.length ? fmtYen(pendingTotal) : "";
-
-  const recent = [...entries].sort((a, b) => {
-    if (sortMode === "date") {
-      const dateDiff = b.date.localeCompare(a.date);
-      if (dateDiff !== 0) return dateDiff;
-    }
-    return b.id - a.id;
-  }).slice(0, 20);
-
-  if (recent.length === 0) {
-    list.innerHTML = '<div class="empty-hint">まだ記録がありません</div>';
-  } else {
-    list.innerHTML = "";
-    recent.forEach(e => {
-      const row = document.createElement("div");
-      row.className = "entry" + (e.exported ? " exported" : "");
-      row.innerHTML = `
-        <span class="cat">${e.category}</span>
-        <span class="item">${e.item || ""} <span style="color:var(--text-muted)">${e.date.slice(5)}</span></span>
-        <span class="price">${fmtYen(e.price)}</span>
-        <button class="del" data-id="${e.id}" aria-label="削除">&times;</button>
-      `;
-      list.appendChild(row);
+function wireDeleteButtons(container) {
+  container.querySelectorAll(".del").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.id);
+      const target = loadEntries().find(e => e.id === id);
+      if (!target) return;
+      const label = `${target.date} ${target.category} ${target.item || ""} ${fmtYen(target.price)}`.trim();
+      if (!confirm(`この記録を削除しますか？\n${label}`)) return;
+      saveEntries(loadEntries().filter(e => e.id !== id));
+      renderAll();
+      showToast("削除しました");
     });
-    list.querySelectorAll(".del").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = Number(btn.dataset.id);
-        const target = loadEntries().find(e => e.id === id);
-        if (!target) return;
-        const label = `${target.date} ${target.category} ${target.item || ""} ${fmtYen(target.price)}`.trim();
-        if (!confirm(`この記録を削除しますか？\n${label}`)) return;
-        const next = loadEntries().filter(e => e.id !== id);
-        saveEntries(next);
-        renderEntries();
-      });
+  });
+}
+
+function renderToday() {
+  const list = document.getElementById("today-list");
+  const totalEl = document.getElementById("today-total");
+  const todays = loadEntries()
+    .filter(isRecordedToday)
+    .sort((a, b) => b.id - a.id);
+
+  totalEl.textContent = todays.length ? `${todays.length}件・${fmtYen(sumOf(todays))}` : "";
+
+  list.innerHTML = "";
+  if (todays.length === 0) {
+    list.innerHTML = '<div class="empty-hint">今日はまだ記録がありません</div>';
+    return;
+  }
+  todays.forEach(e => list.appendChild(makeEntryEl(e)));
+  wireDeleteButtons(list);
+}
+
+function archiveEntries() {
+  const entries = loadEntries();
+  if (archiveFilter === "sent") {
+    return entries.filter(e => e.exported);
+  }
+  return entries.filter(e => !e.exported && !isRecordedToday(e));
+}
+
+function renderArchive() {
+  const list = document.getElementById("archive-list");
+  const totalEl = document.getElementById("archive-total");
+  const rangeEl = document.getElementById("archive-range");
+  const subtitleEl = document.getElementById("archive-subtitle");
+  const clearBtn = document.getElementById("clear-sent-btn");
+
+  const rows = archiveEntries();
+  subtitleEl.textContent = archiveFilter === "sent" ? "送信済みの記録" : "未送信の記録（過去分）";
+  totalEl.textContent = rows.length ? `${rows.length}件・${fmtYen(sumOf(rows))}` : "";
+  clearBtn.hidden = !(archiveFilter === "sent" && rows.length > 0);
+
+  if (rows.length === 0) {
+    rangeEl.textContent = "";
+    list.innerHTML = archiveFilter === "sent"
+      ? '<div class="empty-hint">送信済みの記録はありません</div>'
+      : '<div class="empty-hint">過去分の未送信記録はありません</div>';
+    return;
+  }
+
+  const dates = rows.map(e => e.date).sort();
+  rangeEl.textContent = dates[0] === dates[dates.length - 1]
+    ? fmtDateLabel(dates[0])
+    : `${fmtDateLabel(dates[0])} 〜 ${fmtDateLabel(dates[dates.length - 1])}`;
+
+  list.innerHTML = "";
+
+  if (sortMode === "recorded") {
+    [...rows].sort((a, b) => b.id - a.id).forEach(e => list.appendChild(makeEntryEl(e)));
+  } else {
+    const groups = {};
+    rows.forEach(e => {
+      if (!groups[e.date]) groups[e.date] = [];
+      groups[e.date].push(e);
+    });
+    Object.keys(groups).sort().reverse().forEach(date => {
+      const group = document.createElement("div");
+      group.className = "date-group";
+      const head = document.createElement("div");
+      head.className = "date-head";
+      head.innerHTML = `<span>${fmtDateLabel(date)}</span><span>${fmtYen(sumOf(groups[date]))}</span>`;
+      group.appendChild(head);
+      groups[date].sort((a, b) => a.id - b.id).forEach(e => group.appendChild(makeEntryEl(e)));
+      list.appendChild(group);
     });
   }
 
-  exportBtn.disabled = pending.length === 0;
+  wireDeleteButtons(list);
+}
+
+function renderExportSection() {
+  const noteEl = document.getElementById("export-note");
+  const btn = document.getElementById("export-btn");
+
+  const pending = loadEntries().filter(e => !e.exported);
+  const todayPending = pending.filter(isRecordedToday);
+  const pastPending = pending.length - todayPending.length;
+
+  btn.disabled = pending.length === 0;
+  btn.textContent = pending.length
+    ? `まとめて書き出す（${pending.length}件）`
+    : "まとめて書き出す";
+
+  if (pending.length === 0) {
+    noteEl.textContent = "書き出していない記録はありません。";
+  } else if (todayPending.length > 0 && pastPending > 0) {
+    noteEl.textContent = `過去分${pastPending}件と、今日入力した${todayPending.length}件をまとめて書き出します（合計${fmtYen(sumOf(pending))}）。`;
+  } else if (todayPending.length > 0) {
+    noteEl.textContent = `今日入力した${todayPending.length}件を書き出します（${fmtYen(sumOf(pending))}）。`;
+  } else {
+    noteEl.textContent = `過去分${pastPending}件を書き出します（${fmtYen(sumOf(pending))}）。`;
+  }
+}
+
+function renderArchiveButton() {
+  const btn = document.getElementById("open-archive-btn");
+  const pastPending = loadEntries().filter(e => !e.exported && !isRecordedToday(e)).length;
+  btn.textContent = pastPending
+    ? `ためた記録を見る・PCに送る（${pastPending}件）`
+    : "ためた記録を見る・PCに送る";
+}
+
+function renderAll() {
+  renderToday();
+  renderArchive();
+  renderExportSection();
+  renderArchiveButton();
+}
+
+function showView(view) {
+  const isArchive = view === "archive";
+  document.getElementById("main-view").hidden = isArchive;
+  document.getElementById("archive-view").hidden = !isArchive;
+  document.getElementById("page-title").textContent = isArchive ? "ためた記録" : "家計簿を記録";
+  window.scrollTo(0, 0);
 }
 
 function resetForm() {
@@ -393,7 +611,7 @@ function handleSubmit() {
   });
   saveEntries(entries);
   resetForm();
-  renderEntries();
+  renderAll();
   showToast("記録しました");
 }
 
@@ -413,8 +631,7 @@ function buildCsv(entries) {
 }
 
 async function handleExport() {
-  const entries = loadEntries();
-  const pending = entries.filter(e => !e.exported);
+  const pending = loadEntries().filter(e => !e.exported);
   if (pending.length === 0) return;
 
   const csv = buildCsv(pending);
@@ -445,24 +662,46 @@ async function handleExport() {
 
   if (shared) {
     const ids = new Set(pending.map(e => e.id));
-    const next = loadEntries().map(e => ids.has(e.id) ? { ...e, exported: true } : e);
-    saveEntries(next);
-    renderEntries();
-    showToast("書き出しました");
+    saveEntries(loadEntries().map(e => ids.has(e.id) ? { ...e, exported: true } : e));
+    renderAll();
+    showToast(`${pending.length}件を書き出しました`);
   }
+}
+
+function handleClearSent() {
+  const sent = loadEntries().filter(e => e.exported);
+  if (sent.length === 0) return;
+  if (!confirm(`送信済みの記録${sent.length}件をすべて削除します。よろしいですか？`)) return;
+  saveEntries(loadEntries().filter(e => !e.exported));
+  renderAll();
+  showToast("送信済みを削除しました");
 }
 
 document.getElementById("date-input").value = todayStr();
 renderCategories();
-renderEntries();
+renderAll();
+
 document.getElementById("submit-btn").addEventListener("click", handleSubmit);
 document.getElementById("export-btn").addEventListener("click", handleExport);
-document.querySelectorAll(".sort-btn").forEach(btn => {
+document.getElementById("clear-sent-btn").addEventListener("click", handleClearSent);
+document.getElementById("open-archive-btn").addEventListener("click", () => showView("archive"));
+document.getElementById("back-btn").addEventListener("click", () => showView("main"));
+
+document.querySelectorAll("#filter-row .pill").forEach(btn => {
+  btn.addEventListener("click", () => {
+    archiveFilter = btn.dataset.filter;
+    document.querySelectorAll("#filter-row .pill").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    renderArchive();
+  });
+});
+
+document.querySelectorAll("#sort-row .pill").forEach(btn => {
   btn.addEventListener("click", () => {
     sortMode = btn.dataset.mode;
-    document.querySelectorAll(".sort-btn").forEach(b => b.classList.remove("selected"));
+    document.querySelectorAll("#sort-row .pill").forEach(b => b.classList.remove("selected"));
     btn.classList.add("selected");
-    renderEntries();
+    renderArchive();
   });
 });
 
