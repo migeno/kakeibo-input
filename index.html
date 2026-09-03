@@ -91,13 +91,19 @@
     gap: 8px;
     margin-bottom: 1.1rem;
   }
+  .ico {
+    margin-right: 6px;
+    font-size: 1.1em;
+    line-height: 1;
+  }
   .cat-btn {
-    font-size: 14px;
-    padding: 10px 6px;
+    font-size: 16px;
+    padding: 13px 4px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: #fafafa;
     color: var(--text);
+    white-space: nowrap;
   }
   .cat-btn.selected {
     background: var(--blue-light);
@@ -108,12 +114,12 @@
   .item-wrap { margin-bottom: 1.2rem; }
   .submit-btn {
     width: 100%;
-    height: 48px;
+    height: 56px;
     border: none;
     border-radius: 10px;
     background: var(--blue);
     color: #fff;
-    font-size: 16px;
+    font-size: 19px;
     font-weight: 600;
   }
   .submit-btn:active { opacity: 0.85; }
@@ -136,13 +142,14 @@
     margin-bottom: 10px;
   }
   .pill {
-    font-size: 12px;
-    padding: 4px 12px;
+    font-size: 15px;
+    padding: 7px 14px;
     border-radius: 20px;
     border: 1px solid var(--border);
     background: #fafafa;
     color: var(--text-muted);
   }
+  .pill .ico { margin-right: 4px; }
   .pill.selected {
     background: var(--blue-light);
     border-color: var(--blue);
@@ -169,11 +176,10 @@
   .entry .item { flex: 1; color: var(--text); }
   .entry .price { font-weight: 600; white-space: nowrap; }
   .entry .del {
-    color: var(--danger);
     background: none;
     border: none;
     font-size: 18px;
-    padding: 0 4px;
+    padding: 2px 4px;
     line-height: 1;
   }
   .entry.exported { opacity: 0.45; }
@@ -198,22 +204,22 @@
   }
   .archive-btn {
     width: 100%;
-    height: 48px;
+    height: 56px;
     border-radius: 10px;
     background: #fff;
     border: 1px solid var(--blue);
     color: var(--blue);
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
   }
   .export-btn {
     width: 100%;
-    height: 48px;
+    height: 56px;
     border-radius: 10px;
     background: var(--blue);
     border: 1px solid var(--blue);
     color: #fff;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
   }
   .export-btn:disabled {
@@ -227,12 +233,12 @@
   }
   .danger-btn {
     width: 100%;
-    height: 40px;
+    height: 46px;
     border-radius: 10px;
     background: #fff;
     border: 1px solid var(--danger);
     color: var(--danger);
-    font-size: 13px;
+    font-size: 15px;
     margin-top: 12px;
   }
   .view-head {
@@ -245,8 +251,9 @@
     background: none;
     border: none;
     color: var(--blue);
-    font-size: 15px;
-    padding: 4px 2px;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 6px 2px;
   }
   .view-head .view-title {
     font-size: 15px;
@@ -296,7 +303,7 @@
         <input type="text" id="item-input" placeholder="スーパーで買い物">
       </div>
 
-      <button class="submit-btn" id="submit-btn">記録する</button>
+      <button class="submit-btn" id="submit-btn"><span class="ico">✏️</span>記録する</button>
     </div>
 
     <div class="card">
@@ -307,18 +314,18 @@
       <div id="today-list"></div>
     </div>
 
-    <button class="archive-btn" id="open-archive-btn">ためた記録を見る・PCに送る</button>
+    <button class="archive-btn" id="open-archive-btn"></button>
   </div>
 
   <div id="archive-view" hidden>
     <div class="view-head">
-      <button class="back-btn" id="back-btn">&lsaquo; 記録にもどる</button>
+      <button class="back-btn" id="back-btn"><span class="ico">←</span>記録にもどる</button>
     </div>
 
     <div class="card">
       <div class="pill-row" id="filter-row">
-        <button type="button" class="pill selected" data-filter="pending">未送信</button>
-        <button type="button" class="pill" data-filter="sent">送信済み</button>
+        <button type="button" class="pill selected" data-filter="pending"><span class="ico">📮</span>未送信</button>
+        <button type="button" class="pill" data-filter="sent"><span class="ico">✅</span>送信済み</button>
       </div>
 
       <div class="list-title">
@@ -328,13 +335,13 @@
       <div class="range-line" id="archive-range"></div>
 
       <div class="pill-row" id="sort-row">
-        <button type="button" class="pill selected" data-mode="date">日付順</button>
-        <button type="button" class="pill" data-mode="recorded">記録順</button>
+        <button type="button" class="pill selected" data-mode="date"><span class="ico">📅</span>日付順</button>
+        <button type="button" class="pill" data-mode="recorded"><span class="ico">🕐</span>記録順</button>
       </div>
 
       <div id="archive-list"></div>
 
-      <button class="danger-btn" id="clear-sent-btn" hidden>送信済みをすべて削除</button>
+      <button class="danger-btn" id="clear-sent-btn" hidden><span class="ico">🗑</span>送信済みをすべて削除</button>
     </div>
 
     <div class="card">
@@ -351,6 +358,20 @@ const CATEGORIES = [
   "食費", "住居・備品", "水道・光熱", "衣料", "交際費",
   "レジャー", "教育", "医療・衛生", "その他1", "その他2"
 ];
+
+// 表示用のアイコン（書き出すデータの区分名には影響しません）
+const CATEGORY_ICONS = {
+  "食費": "🛒",
+  "住居・備品": "🏠",
+  "水道・光熱": "💡",
+  "衣料": "👕",
+  "交際費": "🎁",
+  "レジャー": "🎡",
+  "教育": "📚",
+  "医療・衛生": "💊",
+  "その他1": "📦",
+  "その他2": "🧾"
+};
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const STORAGE_KEY = "kakeibo_entries_v1";
@@ -415,7 +436,7 @@ function renderCategories() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "cat-btn";
-    btn.textContent = cat;
+    btn.innerHTML = `<span class="ico">${CATEGORY_ICONS[cat] || "📦"}</span>${cat}`;
     btn.dataset.cat = cat;
     btn.addEventListener("click", () => {
       selectedCategory = cat;
@@ -431,7 +452,7 @@ function entryRowHtml(e) {
     <span class="cat">${e.category}</span>
     <span class="item">${e.item || ""} <span style="color:var(--text-muted)">${e.date.slice(5)}</span></span>
     <span class="price">${fmtYen(e.price)}</span>
-    <button class="del" data-id="${e.id}" aria-label="削除">&times;</button>
+    <button class="del" data-id="${e.id}" aria-label="削除">🗑</button>
   `;
 }
 
@@ -540,9 +561,9 @@ function renderExportSection() {
   const pending = loadEntries().filter(e => !e.exported);
 
   btn.disabled = pending.length === 0;
-  btn.textContent = pending.length
-    ? `まとめて書き出す（${pending.length}件）`
-    : "まとめて書き出す";
+  btn.innerHTML = pending.length
+    ? `<span class="ico">📤</span>まとめて書き出す（${pending.length}件）`
+    : `<span class="ico">📤</span>まとめて書き出す`;
 
   noteEl.textContent = pending.length === 0
     ? "書き出していない記録はありません。"
@@ -552,9 +573,9 @@ function renderExportSection() {
 function renderArchiveButton() {
   const btn = document.getElementById("open-archive-btn");
   const pending = loadEntries().filter(e => !e.exported).length;
-  btn.textContent = pending
-    ? `ためた記録を見る・PCに送る（${pending}件）`
-    : "ためた記録を見る・PCに送る";
+  btn.innerHTML = pending
+    ? `<span class="ico">📋</span>ためた記録を見る・送る（${pending}件）`
+    : `<span class="ico">📋</span>ためた記録を見る・送る`;
 }
 
 function renderAll() {
