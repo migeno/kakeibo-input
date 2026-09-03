@@ -211,6 +211,55 @@
     color: var(--blue);
     font-size: 17px;
     font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.1rem;
+  }
+  .add-row input { flex: 1; }
+  .add-btn {
+    padding: 0 16px;
+    height: 42px;
+    border: none;
+    border-radius: 8px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .shop-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 17px;
+  }
+  .shop-item:last-child { border-bottom: none; }
+  .check {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: #fff;
+    color: transparent;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .shop-text { flex: 1; }
+  .shop-item.done .check {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+  }
+  .shop-item.done .shop-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
   }
   .export-btn {
     width: 100%;
@@ -314,7 +363,30 @@
       <div id="today-list"></div>
     </div>
 
+    <button class="archive-btn" id="open-shopping-btn"></button>
     <button class="archive-btn" id="open-archive-btn"></button>
+  </div>
+
+  <div id="shopping-view" hidden>
+    <div class="view-head">
+      <button class="back-btn" id="shop-back-btn"><span class="ico">←</span>記録にもどる</button>
+    </div>
+
+    <div class="card">
+      <div class="add-row">
+        <input type="text" id="shop-input" placeholder="牛乳" autocomplete="off">
+        <button class="add-btn" id="shop-add-btn"><span class="ico">＋</span>追加</button>
+      </div>
+
+      <div class="list-title">
+        <span>買うもの</span>
+        <span id="shop-count"></span>
+      </div>
+
+      <div id="shop-list"></div>
+
+      <button class="danger-btn" id="shop-clear-btn" hidden><span class="ico">🗑</span>買ったものを消す</button>
+    </div>
   </div>
 
   <div id="archive-view" hidden>
@@ -375,6 +447,7 @@ const CATEGORY_ICONS = {
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const STORAGE_KEY = "kakeibo_entries_v1";
+const SHOPPING_KEY = "kakeibo_shopping_v1";
 let selectedCategory = null;
 let sortMode = "date";
 let archiveFilter = "pending";
@@ -423,6 +496,14 @@ function showToast(msg) {
 
 function fmtYen(n) {
   return "¥" + Math.round(n).toLocaleString("ja-JP");
+}
+
+// 同じミリ秒に続けて追加してもIDが重ならないようにする
+function nextId(existing) {
+  const used = new Set(existing);
+  let id = Date.now();
+  while (used.has(id)) id++;
+  return id;
 }
 
 function sumOf(entries) {
@@ -578,18 +659,119 @@ function renderArchiveButton() {
     : `<span class="ico">📋</span>ためた記録を見る・送る`;
 }
 
+function loadShopping() {
+  try {
+    return JSON.parse(localStorage.getItem(SHOPPING_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveShopping(items) {
+  localStorage.setItem(SHOPPING_KEY, JSON.stringify(items));
+}
+
+function renderShopping() {
+  const list = document.getElementById("shop-list");
+  const countEl = document.getElementById("shop-count");
+  const clearBtn = document.getElementById("shop-clear-btn");
+  const items = loadShopping();
+  const doneCount = items.filter(i => i.done).length;
+
+  countEl.textContent = items.length ? `残り${items.length - doneCount}個` : "";
+  clearBtn.hidden = doneCount === 0;
+  clearBtn.innerHTML = `<span class="ico">🗑</span>買ったものを消す（${doneCount}個）`;
+
+  list.innerHTML = "";
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-hint">買うものを追加してください</div>';
+    return;
+  }
+
+  items.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "shop-item" + (item.done ? " done" : "");
+    row.innerHTML = `
+      <button class="check" data-id="${item.id}" aria-label="チェック">✓</button>
+      <span class="shop-text" data-id="${item.id}">${item.text}</span>
+      <button class="del" data-id="${item.id}" aria-label="削除">🗑</button>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll(".check, .shop-text").forEach(el => {
+    el.addEventListener("click", () => toggleShopItem(Number(el.dataset.id)));
+  });
+  list.querySelectorAll(".del").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.id);
+      const target = loadShopping().find(i => i.id === id);
+      if (!target) return;
+      if (!confirm(`「${target.text}」をリストから消しますか？`)) return;
+      saveShopping(loadShopping().filter(i => i.id !== id));
+      renderShopping();
+      renderShoppingButton();
+    });
+  });
+}
+
+function toggleShopItem(id) {
+  saveShopping(loadShopping().map(i => i.id === id ? { ...i, done: !i.done } : i));
+  renderShopping();
+  renderShoppingButton();
+}
+
+function handleAddShopItem() {
+  const input = document.getElementById("shop-input");
+  const text = input.value.trim();
+  if (!text) return;
+  const items = loadShopping();
+  items.push({ id: nextId(items.map(i => i.id)), text, done: false });
+  saveShopping(items);
+  input.value = "";
+  input.focus();
+  renderShopping();
+  renderShoppingButton();
+}
+
+function handleClearDoneShopItems() {
+  const done = loadShopping().filter(i => i.done);
+  if (done.length === 0) return;
+  if (!confirm(`買ったもの${done.length}個をリストから消します。よろしいですか？`)) return;
+  saveShopping(loadShopping().filter(i => !i.done));
+  renderShopping();
+  renderShoppingButton();
+  showToast("消しました");
+}
+
+function renderShoppingButton() {
+  const btn = document.getElementById("open-shopping-btn");
+  const remaining = loadShopping().filter(i => !i.done).length;
+  btn.innerHTML = remaining
+    ? `<span class="ico">🛒</span>買い物リスト（残り${remaining}個）`
+    : `<span class="ico">🛒</span>買い物リスト`;
+}
+
 function renderAll() {
   renderToday();
   renderArchive();
   renderExportSection();
   renderArchiveButton();
+  renderShopping();
+  renderShoppingButton();
 }
 
+const VIEW_TITLES = {
+  main: "家計簿を記録",
+  archive: "ためた記録",
+  shopping: "買い物リスト"
+};
+
 function showView(view) {
-  const isArchive = view === "archive";
-  document.getElementById("main-view").hidden = isArchive;
-  document.getElementById("archive-view").hidden = !isArchive;
-  document.getElementById("page-title").textContent = isArchive ? "ためた記録" : "家計簿を記録";
+  document.getElementById("main-view").hidden = view !== "main";
+  document.getElementById("archive-view").hidden = view !== "archive";
+  document.getElementById("shopping-view").hidden = view !== "shopping";
+  document.getElementById("page-title").textContent = VIEW_TITLES[view];
   window.scrollTo(0, 0);
 }
 
@@ -616,7 +798,7 @@ function handleSubmit() {
 
   const entries = loadEntries();
   entries.push({
-    id: Date.now(),
+    id: nextId(entries.map(e => e.id)),
     date,
     category: selectedCategory,
     item,
@@ -700,6 +882,16 @@ document.getElementById("export-btn").addEventListener("click", handleExport);
 document.getElementById("clear-sent-btn").addEventListener("click", handleClearSent);
 document.getElementById("open-archive-btn").addEventListener("click", () => showView("archive"));
 document.getElementById("back-btn").addEventListener("click", () => showView("main"));
+document.getElementById("open-shopping-btn").addEventListener("click", () => showView("shopping"));
+document.getElementById("shop-back-btn").addEventListener("click", () => showView("main"));
+document.getElementById("shop-add-btn").addEventListener("click", handleAddShopItem);
+document.getElementById("shop-clear-btn").addEventListener("click", handleClearDoneShopItems);
+document.getElementById("shop-input").addEventListener("keydown", ev => {
+  if (ev.key === "Enter") {
+    ev.preventDefault();
+    handleAddShopItem();
+  }
+});
 
 document.querySelectorAll("#filter-row .pill").forEach(btn => {
   btn.addEventListener("click", () => {
