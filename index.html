@@ -82,9 +82,7 @@ function systemPrefersDark() {
     font-weight: 600;
     margin: 0;
   }
-  .theme-btn, .calc-btn {
-    position: absolute;
-    top: 0.7rem;
+  .hdr-btn {
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -97,9 +95,19 @@ function systemPrefersDark() {
     -webkit-tap-highlight-color: transparent;
     transition: opacity 0.12s;
   }
-  .theme-btn { right: 0.9rem; }
-  .calc-btn { left: 0.9rem; }
-  .theme-btn:active, .calc-btn:active { opacity: 0.5; }
+  .hdr-btn:active { opacity: 0.5; }
+  .header-left {
+    position: absolute;
+    left: 0.7rem;
+    top: 0.7rem;
+    display: flex;
+    gap: 2px;
+  }
+  .theme-btn {
+    position: absolute;
+    right: 0.9rem;
+    top: 0.7rem;
+  }
   .calc-display {
     background: var(--input-bg);
     border: 1px solid var(--border);
@@ -446,9 +454,12 @@ function systemPrefersDark() {
 <body>
 
 <header>
-  <button class="calc-btn" id="calc-btn" aria-label="電卓" title="電卓">🧮</button>
+  <div class="header-left">
+    <button class="hdr-btn" id="calc-btn" aria-label="電卓" title="電卓">🧮</button>
+    <button class="hdr-btn" id="shop-hdr-btn" aria-label="買い物リスト" title="買い物リスト">📝</button>
+  </div>
   <h1 id="page-title">家計簿を記録</h1>
-  <button class="theme-btn" id="theme-btn" aria-label="画面表示モード切替" title="画面表示モード切替">🌗</button>
+  <button class="hdr-btn theme-btn" id="theme-btn" aria-label="画面表示モード切替" title="画面表示モード切替">🌗</button>
 </header>
 
 <main>
@@ -461,7 +472,7 @@ function systemPrefersDark() {
 
       <div class="amount-wrap">
         <span class="field-label">金額</span>
-        <input type="number" id="amount-input" inputmode="numeric" placeholder="0" min="0">
+        <input type="text" id="amount-input" inputmode="numeric" placeholder="0" autocomplete="off">
       </div>
 
       <span class="field-label">区分</span>
@@ -908,8 +919,8 @@ function renderShoppingButton() {
   const btn = document.getElementById("open-shopping-btn");
   const remaining = loadShopping().filter(i => !i.done).length;
   btn.innerHTML = remaining
-    ? `<span class="ico">🛒</span>買い物リスト（残り${remaining}個）`
-    : `<span class="ico">🛒</span>買い物リスト`;
+    ? `<span class="ico">📝</span>買い物リスト（残り${remaining}個）`
+    : `<span class="ico">📝</span>買い物リスト`;
 }
 
 function renderAll() {
@@ -1042,7 +1053,7 @@ function calcCopyToAmount() {
     showToast("0より大きい金額にしてください");
     return;
   }
-  document.getElementById("amount-input").value = String(v);
+  setAmountInput(v);
   showView("main");
   showToast(`金額に ${fmtYen(v)} を入れました`);
 }
@@ -1118,6 +1129,21 @@ function showView(view) {
   window.scrollTo(0, 0);
 }
 
+// 金額欄は3桁区切りで表示する（入力のたびに整形し、値の読み取り時にカンマを外す）
+function amountValue() {
+  return Number(document.getElementById("amount-input").value.replace(/,/g, ""));
+}
+
+function setAmountInput(n) {
+  document.getElementById("amount-input").value = n ? Number(n).toLocaleString("ja-JP") : "";
+}
+
+function formatAmountInput() {
+  const el = document.getElementById("amount-input");
+  const digits = el.value.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "").slice(0, 8);
+  el.value = digits ? Number(digits).toLocaleString("ja-JP") : "";
+}
+
 function resetForm() {
   document.getElementById("amount-input").value = "";
   document.getElementById("item-input").value = "";
@@ -1127,7 +1153,7 @@ function resetForm() {
 
 function handleSubmit() {
   const date = document.getElementById("date-input").value || todayStr();
-  const amount = Number(document.getElementById("amount-input").value);
+  const amount = amountValue();
   const item = document.getElementById("item-input").value.trim();
 
   if (!selectedCategory) {
@@ -1223,6 +1249,7 @@ renderAll();
 
 document.getElementById("theme-btn").addEventListener("click", toggleTheme);
 document.getElementById("calc-btn").addEventListener("click", () => showView("calc"));
+document.getElementById("shop-hdr-btn").addEventListener("click", () => showView("shopping"));
 document.getElementById("calc-back-btn").addEventListener("click", () => showView("main"));
 document.getElementById("calc-copy-btn").addEventListener("click", calcCopyToAmount);
 document.querySelectorAll(".calc-key").forEach(btn => {
@@ -1237,6 +1264,7 @@ document.querySelectorAll(".calc-key").forEach(btn => {
 renderCalc();
 
 document.getElementById("submit-btn").addEventListener("click", handleSubmit);
+document.getElementById("amount-input").addEventListener("input", formatAmountInput);
 document.getElementById("export-btn").addEventListener("click", handleExport);
 document.getElementById("clear-sent-btn").addEventListener("click", handleClearSent);
 document.getElementById("open-archive-btn").addEventListener("click", () => showView("archive"));
