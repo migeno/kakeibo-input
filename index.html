@@ -82,10 +82,9 @@ function systemPrefersDark() {
     font-weight: 600;
     margin: 0;
   }
-  .theme-btn {
+  .theme-btn, .calc-btn {
     position: absolute;
     top: 0.7rem;
-    right: 0.9rem;
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -98,7 +97,59 @@ function systemPrefersDark() {
     -webkit-tap-highlight-color: transparent;
     transition: opacity 0.12s;
   }
-  .theme-btn:active { opacity: 0.5; }
+  .theme-btn { right: 0.9rem; }
+  .calc-btn { left: 0.9rem; }
+  .theme-btn:active, .calc-btn:active { opacity: 0.5; }
+  .calc-display {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 14px;
+    text-align: right;
+    margin-bottom: 12px;
+  }
+  .calc-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    min-height: 19px;
+  }
+  .calc-value {
+    font-size: 34px;
+    font-weight: 600;
+    line-height: 1.2;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+  .calc-key {
+    height: 58px;
+    font-size: 22px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text);
+  }
+  .calc-key:active { opacity: 0.6; }
+  .calc-key.fn { font-size: 18px; color: var(--text-muted); }
+  .calc-key.op {
+    background: var(--blue-light);
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .calc-key.eq {
+    grid-row: span 2;
+    height: auto;
+    background: var(--blue);
+    border-color: var(--blue);
+    color: var(--on-blue);
+  }
+  .calc-key.zero { grid-column: span 2; }
   main {
     max-width: 480px;
     margin: 0 auto;
@@ -395,6 +446,7 @@ function systemPrefersDark() {
 <body>
 
 <header>
+  <button class="calc-btn" id="calc-btn" aria-label="電卓" title="電卓">🧮</button>
   <h1 id="page-title">家計簿を記録</h1>
   <button class="theme-btn" id="theme-btn" aria-label="画面表示モード切替" title="画面表示モード切替">🌗</button>
 </header>
@@ -433,6 +485,46 @@ function systemPrefersDark() {
 
     <button class="archive-btn" id="open-shopping-btn"></button>
     <button class="archive-btn" id="open-archive-btn"></button>
+  </div>
+
+  <div id="calc-view" hidden>
+    <div class="view-head">
+      <button class="back-btn" id="calc-back-btn"><span class="ico">←</span>記録にもどる</button>
+    </div>
+
+    <div class="card">
+      <div class="calc-display">
+        <div class="calc-sub" id="calc-sub"></div>
+        <div class="calc-value" id="calc-value">0</div>
+      </div>
+
+      <div class="calc-grid">
+        <button type="button" class="calc-key fn" data-act="clear">C</button>
+        <button type="button" class="calc-key fn" data-act="back">⌫</button>
+        <button type="button" class="calc-key op" data-op="÷">÷</button>
+        <button type="button" class="calc-key op" data-op="×">×</button>
+
+        <button type="button" class="calc-key" data-digit="7">7</button>
+        <button type="button" class="calc-key" data-digit="8">8</button>
+        <button type="button" class="calc-key" data-digit="9">9</button>
+        <button type="button" class="calc-key op" data-op="−">−</button>
+
+        <button type="button" class="calc-key" data-digit="4">4</button>
+        <button type="button" class="calc-key" data-digit="5">5</button>
+        <button type="button" class="calc-key" data-digit="6">6</button>
+        <button type="button" class="calc-key op" data-op="＋">＋</button>
+
+        <button type="button" class="calc-key" data-digit="1">1</button>
+        <button type="button" class="calc-key" data-digit="2">2</button>
+        <button type="button" class="calc-key" data-digit="3">3</button>
+        <button type="button" class="calc-key eq" data-act="equals">＝</button>
+
+        <button type="button" class="calc-key zero" data-digit="0">0</button>
+        <button type="button" class="calc-key" data-digit="00">00</button>
+      </div>
+
+      <button class="export-btn" id="calc-copy-btn"><span class="ico">📋</span>金額欄に入れる</button>
+    </div>
   </div>
 
   <div id="shopping-view" hidden>
@@ -829,6 +921,132 @@ function renderAll() {
   renderShoppingButton();
 }
 
+// ── 電卓 ───────────────────────────────────────────────
+// 表示は8桁の整数まで。割り算で小数が出る場合は内部で小数第3位まで保持し、
+// 表示と金額欄へのコピー時に四捨五入して整数にする。
+const CALC_MAX = 99999999;
+let calcCurrent = "0";   // 入力中の数字、または直前の計算結果（内部値）
+let calcAccum = null;    // 保留中の左辺
+let calcOp = null;       // 保留中の演算子
+let calcFresh = true;    // 次の数字入力で表示を置き換えるか
+let calcError = false;
+
+function round3(v) {
+  return Math.round(v * 1000) / 1000;
+}
+
+// 四捨五入（JSのMath.roundは -2.5 を -2 にするため、符号を分けて処理する）
+function roundHalfUp(v) {
+  return v < 0 ? -Math.round(-v) : Math.round(v);
+}
+
+function calcIntValue() {
+  return roundHalfUp(Number(calcCurrent));
+}
+
+function renderCalc() {
+  const valEl = document.getElementById("calc-value");
+  const subEl = document.getElementById("calc-sub");
+  valEl.textContent = calcError ? "エラー" : calcIntValue().toLocaleString("ja-JP");
+  subEl.textContent = (!calcError && calcOp !== null && calcAccum !== null)
+    ? `${roundHalfUp(calcAccum).toLocaleString("ja-JP")} ${calcOp}`
+    : "";
+}
+
+function calcSetError() {
+  calcError = true;
+  calcOp = null;
+  calcAccum = null;
+  calcFresh = true;
+  renderCalc();
+}
+
+function calcApplyOp(a, b, op) {
+  let r;
+  if (op === "＋") r = a + b;
+  else if (op === "−") r = a - b;
+  else if (op === "×") r = a * b;
+  else if (op === "÷") {
+    if (b === 0) return null;
+    r = a / b;
+  } else return null;
+  r = round3(r);
+  if (!isFinite(r) || Math.abs(roundHalfUp(r)) > CALC_MAX) return null;
+  return r;
+}
+
+function calcDigit(d) {
+  if (calcError) return;
+  if (calcFresh) {
+    calcCurrent = (d === "00") ? "0" : d;
+    calcFresh = false;
+  } else if (calcCurrent === "0") {
+    calcCurrent = (d === "00") ? "0" : d;
+  } else {
+    const next = calcCurrent + d;
+    if (next.replace("-", "").length > 8) return;  // 8桁まで
+    calcCurrent = next;
+  }
+  renderCalc();
+}
+
+function calcOperator(op) {
+  if (calcError) return;
+  if (calcOp !== null && !calcFresh) {
+    const r = calcApplyOp(calcAccum, Number(calcCurrent), calcOp);
+    if (r === null) return calcSetError();
+    calcAccum = r;
+    calcCurrent = String(r);
+  } else {
+    calcAccum = round3(Number(calcCurrent));
+  }
+  calcOp = op;
+  calcFresh = true;
+  renderCalc();
+}
+
+function calcEquals() {
+  if (calcError || calcOp === null) return;
+  const r = calcApplyOp(calcAccum, Number(calcCurrent), calcOp);
+  if (r === null) return calcSetError();
+  calcCurrent = String(r);
+  calcAccum = null;
+  calcOp = null;
+  calcFresh = true;
+  renderCalc();
+}
+
+function calcBack() {
+  if (calcError || calcFresh) return;  // 計算結果の表示中はCでやり直す
+  calcCurrent = calcCurrent.length <= 1 ? "0" : calcCurrent.slice(0, -1);
+  if (calcCurrent === "-" || calcCurrent === "") calcCurrent = "0";
+  renderCalc();
+}
+
+function calcClear() {
+  calcCurrent = "0";
+  calcAccum = null;
+  calcOp = null;
+  calcFresh = true;
+  calcError = false;
+  renderCalc();
+}
+
+function calcCopyToAmount() {
+  if (calcError) {
+    showToast("計算をやり直してください");
+    return;
+  }
+  const v = calcIntValue();
+  if (v <= 0) {
+    showToast("0より大きい金額にしてください");
+    return;
+  }
+  document.getElementById("amount-input").value = String(v);
+  showView("main");
+  showToast(`金額に ${fmtYen(v)} を入れました`);
+}
+
 const THEME_META = { light: "#f5f5f3", dark: "#14181d" };
 // ボタンを押すたびに この順で巡回する
 const THEME_CYCLE = ["system", "light", "dark"];
@@ -887,13 +1105,15 @@ function initTheme() {
 const VIEW_TITLES = {
   main: "家計簿を記録",
   archive: "ためた記録",
-  shopping: "買い物リスト"
+  shopping: "買い物リスト",
+  calc: "電卓"
 };
 
 function showView(view) {
   document.getElementById("main-view").hidden = view !== "main";
   document.getElementById("archive-view").hidden = view !== "archive";
   document.getElementById("shopping-view").hidden = view !== "shopping";
+  document.getElementById("calc-view").hidden = view !== "calc";
   document.getElementById("page-title").textContent = VIEW_TITLES[view];
   window.scrollTo(0, 0);
 }
@@ -1002,6 +1222,19 @@ renderCategories();
 renderAll();
 
 document.getElementById("theme-btn").addEventListener("click", toggleTheme);
+document.getElementById("calc-btn").addEventListener("click", () => showView("calc"));
+document.getElementById("calc-back-btn").addEventListener("click", () => showView("main"));
+document.getElementById("calc-copy-btn").addEventListener("click", calcCopyToAmount);
+document.querySelectorAll(".calc-key").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.digit !== undefined) calcDigit(btn.dataset.digit);
+    else if (btn.dataset.op !== undefined) calcOperator(btn.dataset.op);
+    else if (btn.dataset.act === "equals") calcEquals();
+    else if (btn.dataset.act === "clear") calcClear();
+    else if (btn.dataset.act === "back") calcBack();
+  });
+});
+renderCalc();
 
 document.getElementById("submit-btn").addEventListener("click", handleSubmit);
 document.getElementById("export-btn").addEventListener("click", handleExport);
