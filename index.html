@@ -434,6 +434,32 @@ function systemPrefersDark() {
     font-size: 15px;
     font-weight: 600;
   }
+  .app-footer {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 0.5rem;
+    text-align: center;
+    border-top: 1px solid var(--border);
+  }
+  .app-logo {
+    display: inline-block;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    background: linear-gradient(90deg, #ff5f6d, #ffa62b, #3ec46d, #2f8ef4, #a35cf5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    margin-bottom: 6px;
+  }
+  .app-url {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-decoration: none;
+    word-break: break-all;
+  }
   .toast {
     position: fixed;
     left: 50%;
@@ -593,6 +619,11 @@ function systemPrefersDark() {
     </div>
   </div>
 </main>
+
+<footer class="app-footer">
+  <div class="app-logo">93N M12</div>
+  <a class="app-url" href="https://migeno.github.io/kakeibo-input/">https://migeno.github.io/kakeibo-input/</a>
+</footer>
 
 <div class="toast" id="toast"></div>
 
